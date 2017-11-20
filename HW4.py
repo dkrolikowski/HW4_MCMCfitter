@@ -7,7 +7,7 @@ import pdb
 
 def proposal( x ):
 
-    var = 1e-1
+    var = 5.0
 
     return np.random.normal( x, np.sqrt( var ), 1 )[0]
 
@@ -25,7 +25,9 @@ def pxy( xy ):
 
 N       = 50000
 samples = np.zeros( ( 2, N ) )
+samples[:,0] = np.array([8.0,10.0])
 dims    = 2
+acc_rej = np.zeros( N - 1 )
 
 for i in range( 1, N ):
 
@@ -40,8 +42,11 @@ for i in range( 1, N ):
 
     if a1 > r:
         samples[:,i] = xnext
+        acc_rej[i-1]   = 1.0
     else:
         samples[:,i] = xprev
+
+print acc_rej.sum() / acc_rej.size
 
 plt.clf()
 plt.plot( samples[0], samples[1], 'k,' )
