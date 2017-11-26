@@ -139,7 +139,7 @@ def model( p, x ):
     Psec = P * u.d.to('s')
     Mpkg = Mp * u.Mjup.to('kg')
     
-    A = Mpkg / Ms * ( 2 * np.pi * const.G.value * ( Mpkg + Ms ) / Psec ) ** ( 1./3. )
+    A = Mpkg / Ms * ( 2 * np.pi * const.G.value * Ms / Psec ) ** ( 1./3. )
 
     return A * np.sin( 2 * np.pi * ( x - t0 ) / P )
 
@@ -159,33 +159,41 @@ yarr = data.RV
 N       = 105000
 dims    = 3
 samples = np.zeros( ( N, dims ) )
-samples[0] = np.array( [  5.0, 1.0, 2451411.4 ] )
+samples[0] = np.array( [ 3.525, 0.71, 2451411.4 ] )
 acc_rej = np.zeros( N - 1 )
 
-for i in range( 1, N ):
+# for i in range( 1, N ):
 
-    dim   = np.random.randint( 0, dims )
+#     dim   = np.random.randint( 0, dims )
 
-    xprev      = samples[i-1]
-    xnext      = xprev.copy()
-    xnext[dim] = proposalq( xprev[dim] )
+#     xprev      = samples[i-1]
+#     xnext      = xprev.copy()
+#     xnext[dim] = proposalq( xprev[dim] )
 
-    r  = np.random.random()
-    a1 = logProb( xnext, xarr, yarr ) - logProb( xprev, xarr, yarr )
+#     r  = np.random.random()
+#     a1 = logProb( xnext, xarr, yarr ) - logProb( xprev, xarr, yarr )
 
-    if a1 > np.log(r):
-        samples[i] = xnext
-        acc_rej[i-1] = 1.0
-    else:
-        samples[i] = xprev
+#     if a1 > np.log(r):
+#         samples[i] = xnext
+#         acc_rej[i-1] = 1.0
+#     else:
+#         samples[i] = xprev
 
-burnin  = samples[:5000].copy()
-samples = samples[5000:]
+# burnin  = samples[:5000].copy()
+# samples = samples[5000:]
 
-print acc_rej.sum() / acc_rej.size
+# print acc_rej.sum() / acc_rej.size
 
-meds = np.median( samples, axis = 0 )
-print meds
+# meds = np.median( samples, axis = 0 )
+# print meds
+
+meds = np.array( [  3.52477682e+00,   6.84452539e-01,   2.45141145e+06] )
+
+phase = ( ( xarr - meds[2] ) / meds[0] * 2 * np.pi ) % ( 2 * np.pi ) / 2 / np.pi
+
+plt.clf()
+plt.plot( phase, yarr, 'k.' )
+plt.show()
 
 xplot = np.linspace( xarr.min(), xarr.max(), 1000000 )
 yplot = model( meds, xplot )
