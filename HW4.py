@@ -6,7 +6,7 @@ import pandas as pd
 import astropy.units as u
 import astropy.constants as const
 
-import pdb
+import pdb, pickle
 
 # def proposal( x ):
 
@@ -87,24 +87,26 @@ def proposalq( x ):
 
 # Straight line
 
-# def model( p, x ):
+def model( p, x ):
 
-#     a, b = p
+    a, b = p
 
-#     return a * x + b
+    return a * x + b
 
-# def logPrior( p ):
+def logPrior( p ):
 
-#     a, b = p
+    a, b = p
 
-#     if -20 <= a <= 25 and -5 <= b <= 5:
-#         return 0.0
-#     else:
-#         return -np.inf
+    if -20 <= a <= 25 and -5 <= b <= 5:
+        return 0.0
+    else:
+        return -np.inf
 
-# preal = np.array( [ 4.32, 0.543 ] )
-# xarr  = np.random.uniform( -5, 14, 25 )
-# yarr  = model( preal, xarr ) + np.random.normal( 0.0, 2.0, xarr.size )
+preal = np.array( [ 4.32, 0.543 ] )
+xarr  = np.random.uniform( -5, 14, 25 )
+yarr  = model( preal, xarr ) + np.random.normal( 0.0, 2.0, xarr.size )
+
+p0    = np.array( [ 0.0, 0.0 ] )
 
 # 1D Gaussian
 
@@ -127,73 +129,77 @@ def proposalq( x ):
 # xarr  = np.random.uniform( -8.0, 10.0, 30 )
 # yarr  = model( preal, xarr ) + np.random.normal( 0.0, 2.0, xarr.size )
 
+# p0    = np.array( [ 0.0, 0.0, 0.0, 0.0 ] )
+
 # RV Curve Model
 
-def model( p, x ):
+# def model( p, x ):
 
-    # Assumes P in days, Mp in Mjup, and t0 in days (JD)
+#     # Assumes P in days, Mp in Mjup, and t0 in days (JD)
     
-    P, Mp, t0 = p
-    Ms        = 1.13 * u.solMass.to('kg')
+#     P, Mp, t0 = p
+#     Ms        = 1.13 * u.solMass.to('kg')
 
-    Psec = P * u.d.to('s')
-    Mpkg = Mp * u.Mjup.to('kg')
+#     Psec = P * u.d.to('s')
+#     Mpkg = Mp * u.Mjup.to('kg')
     
-    A = Mpkg / Ms * ( 2 * np.pi * const.G.value * Ms / Psec ) ** ( 1./3. )
+#     A = Mpkg / Ms * ( 2 * np.pi * const.G.value * Ms / Psec ) ** ( 1./3. )
 
-    return A * np.sin( 2 * np.pi * ( x - t0 ) / P )
+#     return A * np.sin( 2 * np.pi * ( x - t0 ) / P )
 
-def logPrior( p ):
+# def logPrior( p ):
 
-    P, Mp, t0 = p
+#     P, Mp, t0 = p
 
-    if P <= 0 or Mp <= 0:
-        return -np.inf
-    else:
-        return 0.0
-
-data = pd.read_table( 'HD209458.lst', delim_whitespace = True )
-xarr = data.Date
-yarr = data.RV
-
-N       = 105000
-dims    = 3
-samples = np.zeros( ( N, dims ) )
-samples[0] = np.array( [ 3.525, 0.71, 2451411.4 ] )
-acc_rej = np.zeros( N - 1 )
-
-# for i in range( 1, N ):
-
-#     dim   = np.random.randint( 0, dims )
-
-#     xprev      = samples[i-1]
-#     xnext      = xprev.copy()
-#     xnext[dim] = proposalq( xprev[dim] )
-
-#     r  = np.random.random()
-#     a1 = logProb( xnext, xarr, yarr ) - logProb( xprev, xarr, yarr )
-
-#     if a1 > np.log(r):
-#         samples[i] = xnext
-#         acc_rej[i-1] = 1.0
+#     if P <= 0 or Mp <= 0:
+#         return -np.inf
 #     else:
-#         samples[i] = xprev
+#         return 0.0
 
-# burnin  = samples[:5000].copy()
-# samples = samples[5000:]
+# data = pd.read_table( 'HD209458.lst', delim_whitespace = True )
+# xarr = data.Date
+# yarr = data.RV
 
-# print acc_rej.sum() / acc_rej.size
+# p0   = np.array( [ 3.525, 0.71, 2451411.4 ] )
 
-# meds = np.median( samples, axis = 0 )
-# print meds
+N          = 105000
+dims       = 2
+samples    = np.zeros( ( N, dims ) )
+samples[0] = p0
+acc_rej    = np.zeros( N - 1 )
 
-meds = np.array( [  3.52477682e+00,   6.84452539e-01,   2.45141145e+06] )
+for i in range( 1, N ):
 
-phase = ( ( xarr - meds[2] ) / meds[0] * 2 * np.pi ) % ( 2 * np.pi ) / 2 / np.pi
+    dim   = np.random.randint( 0, dims )
 
-plt.clf()
-plt.plot( phase, yarr, 'k.' )
-plt.show()
+    xprev      = samples[i-1]
+    xnext      = xprev.copy()
+    xnext[dim] = proposalq( xprev[dim] )
+
+    r  = np.random.random()
+    a1 = logProb( xnext, xarr, yarr ) - logProb( xprev, xarr, yarr )
+
+    if a1 > np.log(r):
+        samples[i] = xnext
+        acc_rej[i-1] = 1.0
+    else:
+        samples[i] = xprev
+
+burnin  = samples[:5000].copy()
+samples = samples[5000:]
+
+pickle.dump( acc_rej, open( 'acc_rej.lst', 'wb' ) )
+pickle.dump( samples, open( 'samples.lst', 'wb' ) )
+
+print acc_rej.sum() / acc_rej.size
+
+meds = np.median( samples, axis = 0 )
+p16  = np.percentile( samples, 16.0, axis = 0 )
+p84  = np.percentile( samples, 84.0, axis = 0 )
+
+print meds - p16
+print meds
+print p84 - meds
 
 xplot = np.linspace( xarr.min(), xarr.max(), 1000000 )
 yplot = model( meds, xplot )
@@ -211,27 +217,40 @@ plt.show()
 #     plt.hist( samples[:,i], bins = 20, histtype = 'step', color = 'k' )
 # plt.show()
 
+plt.clf()
+fig = plt.figure()
+# plot the 2D histogram
+fig.add_subplot( 223 )
+#plt.plot( samples[:,0], samples[:,1], 'k,', alpha = 0.5 )
+plt.hist2d( samples[:,0], samples[:,1], bins = 40, cmap = plt.get_cmap('gray') )
 
-# plt.clf()
-# fig = plt.figure()
-# # plot the 2D histogram
-# fig.add_subplot( 223 )
-# plt.plot( samples[:,0], samples[:,1], 'k,' )
-# plt.axvline( x = meds[0], color = 'r' )
-# plt.axhline( y = meds[1], color = 'r' )
-# # plot the upper 1D histogram
-# fig.add_subplot( 221 )
-# plt.hist( samples[:,0], bins = 20, histtype = 'step', color = 'k' )
-# plt.axvline( x = meds[0], color = 'r' )
-# plt.xticks( [], [] )
-# plt.yticks( [], [] )
-# # plot the right 1D histogram
-# fig.add_subplot( 224 )
-# plt.hist( samples[:,1], bins = 20, histtype = 'step', color = 'k' )
-# plt.axvline( x = meds[1], color = 'r' )
-# plt.yticks( [], [] )
-# plt.xticks( [], [] )
+plt.axvline( x = p16[0], color = 'r', ls = ':' )
+plt.axvline( x = meds[0], color = 'r' )
+plt.axvline( x = p84[0], color = 'r', ls = ':' )
 
-# fig.subplots_adjust( wspace = 0, hspace = 0 )
+plt.axhline( y = p16[1], color = 'b', ls = ':' )
+plt.axhline( y = meds[1], color = 'b' )
+plt.axhline( y = p84[1], color = 'b', ls = ':' )
 
-# plt.show()
+# plot the upper 1D histogram
+fig.add_subplot( 221 )
+plt.hist( samples[:,0], bins = 20, histtype = 'step', color = 'k' )
+
+plt.axvline( x = p16[0], color = 'r', ls = ':' )
+plt.axvline( x = meds[0], color = 'r' )
+plt.axvline( x = p84[0], color = 'r', ls = ':' )
+
+plt.xticks( [], [] ); plt.yticks( [], [] )
+# plot the right 1D histogram
+fig.add_subplot( 224 )
+plt.hist( samples[:,1], bins = 20, histtype = 'step', color = 'k' )
+
+plt.axvline( x = p16[1], color = 'b', ls = ':' )
+plt.axvline( x = meds[1], color = 'b' )
+plt.axvline( x = p84[1], color = 'b', ls = ':' )
+
+plt.yticks( [], [] ); plt.xticks( [], [] )
+
+fig.subplots_adjust( wspace = 0, hspace = 0 )
+
+plt.show()
